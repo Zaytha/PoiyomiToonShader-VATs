@@ -1,7 +1,7 @@
 ## Poi Vats
 
 This edit adds support for [SideFXLab's Vertex Animation Textures](https://github.com/sideeffects/SideFXLabs).
-It is meant to work with [Zaytha's SPS Tweaks](https://github.com/Zaytha/SPS-Tweaks) for sps penetraion, but will work fine with standalon VATs.
+It is meant to work with [Zaytha's SPS Tweaks](https://github.com/Zaytha/SPS-Tweaks) for sps penetraion, but will work fine with stand alone VATs.
 
 If you're just looking for the shader, its located in _PoiyomiShaders > Shaders > 9.1 > Toon > Poiyomi Toon VAT.shader
 
