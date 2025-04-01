@@ -1,4 +1,4 @@
-Shader ".poiyomi/Poiyomi Toon VAT"
+Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 {
 	Properties
 	{
