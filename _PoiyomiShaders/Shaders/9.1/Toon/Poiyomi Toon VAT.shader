@@ -2,7 +2,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 {
 	Properties
 	{
-		[HideInInspector] shader_master_label ("<color=#E75898ff>Poiyomi 9.1.26</color>", Float) = 0
+		[HideInInspector] shader_master_label ("<color=#E75898ff>Poiyomi 9.1.28</color>", Float) = 0
 		[HideInInspector] shader_is_using_thry_editor ("", Float) = 0
 		[HideInInspector] shader_locale ("0db0b86376c3dca4b9a6828ef8615fe0", Float) = 0
 		[HideInInspector] footer_youtube ("{texture:{name:icon-youtube,height:16},action:{type:URL,data:https://www.youtube.com/poiyomi},hover:YOUTUBE}", Float) = 0
@@ -1109,13 +1109,16 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 		//_ShadowStrengthMaskLOD ("LOD", Range(0, 1)) = 0
 		[HideInInspector] s_end_MultilayerShadowMap ("Shadow Map}", Float) = 0
 		
-		_ShadowBorderMask ("AO Map--{reference_properties:[_ShadowBorderMaskPan, _ShadowBorderMaskUV, _ShadowBorderMaskLOD, _ShadowPostAO, _ShadowAOShift, _ShadowAOShift2], condition_showS:(_LightingMode==1)}", 2D) = "white" { }
+		[HideInInspector] s_start_MultilayerMathBorderMap ("Shadow Border Map--{reference_property:_ShadowBorderMapToggle, persistent_expand:true,default_expand:false, condition_showS:(_LightingMode==1)}", Float) = 0
+		[HideInInspector][ToggleUI] _ShadowBorderMapToggle ("Shadow Border Map Toggle", Float) = 0
+		_ShadowBorderMask ("AO Map--{reference_properties:[_ShadowBorderMaskPan, _ShadowBorderMaskUV]}", 2D) = "white" { }
 		[HideInInspector][Vector2]_ShadowBorderMaskPan ("Panning", Vector) = (0, 0, 0, 0)
 		[HideInInspector][ThryWideEnum(UV0, 0, UV1, 1, UV2, 2, UV3, 3, Panosphere, 4, World Pos, 5, Local Pos, 8, Polar UV, 6, Distorted UV, 7)] _ShadowBorderMaskUV ("UV", Int) = 0
-		[HideInInspector]_ShadowBorderMaskLOD ("Border Map LOD", Range(0, 1)) = 0
-		[HideInInspector][ToggleUI]_ShadowPostAO ("Ignore Border Properties", Float) = 0
-		[HideInInspector][VectorToSliders(1st Min, n0.01, p1.01, 1st Max, n0.01, p1.01, 2nd Min, n0.01, p1.01, 2nd Max, n0.01, p1.01)]_ShadowAOShift ("Shadow AO Shift", Vector) = (0, 1, 0, 1)
-		[HideInInspector][VectorToSliders(3rd Min, n0.01, p1.01, 3rd Max, n0.01, p1.01)]_ShadowAOShift2 ("Shadow AO Shift", Vector) = (0, 1, 0, 1)
+		_ShadowBorderMaskLOD ("Border Map LOD", Range(0, 1)) = 0
+		[ToggleUI]_ShadowPostAO ("Ignore Border Properties", Float) = 0
+		[VectorToSliders(1st Min, n0.01, p1.01, 1st Max, n0.01, p1.01, 2nd Min, n0.01, p1.01, 2nd Max, n0.01, p1.01)]_ShadowAOShift ("Shadow AO Shift", Vector) = (0, 1, 0, 1)
+		[VectorToSliders(3rd Min, n0.01, p1.01, 3rd Max, n0.01, p1.01)]_ShadowAOShift2 ("Shadow AO Shift", Vector) = (0, 1, 0, 1)
+		[HideInInspector] s_end_MultilayerMathBorderMap ("Shadow Border Map", Float) = 1
 		
 		[sRGBWarning]_MultilayerMathBlurMap ("Blur Map--{reference_properties:[_MultilayerMathBlurMapPan, _MultilayerMathBlurMapUV], condition_showS:(_LightingMode==1)}", 2D) = "white" { }
 		[ToggleUI]_LightingMulitlayerNonLinear ("Non Linear Lightmap--{condition_showS:(_LightingMode==1)}", Float) = 1
@@ -7788,7 +7791,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 			//ifex _EnabledVAT==0
 			#if defined(POI_VAT)
 			// helper function to get current frame and next frames offset
-			float2 get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+			float2 getUVOffset(float frame, float y_ratio, float y_cord, float x_cord)
 			{
 				// progress describes how far the animation is along the VAT, from 0 to 1
 				float progress = frame * (1/_VATFrameCount);
@@ -7799,7 +7802,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return frame_uv;
 			}
 			// both normal and optional tangents are stored in the same rotation map, this decodes that for each case
-			float3 decode_rotation_texture(float4 data, float3 key)
+			float3 decodeRotationTexture(float4 data, float3 key)
 			{
 				float3 x1 = data.w * key;
 				float3 x2 = cross(data.xyz, key);
@@ -7808,7 +7811,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return x4;
 			}
 
-			void applyVertexAnimationTexture_real(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
+			void applyVertexAnimationTexture(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
 			{
 				// setup for option skipping of first frame
 				float frame_count_modified = _VATFrameCount;
@@ -7848,8 +7851,8 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				}
 
 				// get the offset for curret and next frame
-				float2 current_frame_uv = get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-				float2 next_frame_uv = get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 current_frame_uv = getUVOffset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 next_frame_uv = getUVOffset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
 
 				// sample positiion texture with offset uv for current and next frame
 				float4 pos_offset = tex2Dlod(_VATPositionTexture, float4(current_frame_uv, 0, 0));
@@ -7860,12 +7863,12 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				float4 next_rotation_sample = tex2Dlod(_VATRotationTexture, float4(next_frame_uv, 0, 0));
 
 				// normal map from rotation texture
-				float3 normal_offset = decode_rotation_texture(rotation_sample, float3(0,1,0));
-				float3 next_normal_offset = decode_rotation_texture(next_rotation_sample, float3(0,1,0));
+				float3 normal_offset = decodeRotationTexture(rotation_sample, float3(0,1,0));
+				float3 next_normal_offset = decodeRotationTexture(next_rotation_sample, float3(0,1,0));
 
 				// tangnet map from rotation texture
-				float3 tangent_offset = decode_rotation_texture(rotation_sample, float3(-1,0,0));
-				float3 next_tangent_offset = decode_rotation_texture(next_rotation_sample, float3(-1,0,0));
+				float3 tangent_offset = decodeRotationTexture(rotation_sample, float3(-1,0,0));
+				float3 next_tangent_offset = decodeRotationTexture(next_rotation_sample, float3(-1,0,0));
 
 				// apply the offset to mesh
 
@@ -7911,11 +7914,11 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 					}
 				}
 			}
-			void applyVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
+			void testVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
 			{
 				if(_VATFromShader) // Only do VATs when checkbox is enabled, when using patched SPS this should be disabled
 				{
-					applyVertexAnimationTexture_real(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
+					applyVertexAnimationTexture(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
 				}
 			}
 			#endif
@@ -8143,7 +8146,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 
 				//ifex _EnabledVAT==0
 				#if defined(POI_VAT)
-				applyVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
+				testVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
 				#endif
 				//endex
 				
@@ -15269,7 +15272,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 			//ifex _EnabledVAT==0
 			#if defined(POI_VAT)
 			// helper function to get current frame and next frames offset
-			float2 get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+			float2 getUVOffset(float frame, float y_ratio, float y_cord, float x_cord)
 			{
 				// progress describes how far the animation is along the VAT, from 0 to 1
 				float progress = frame * (1/_VATFrameCount);
@@ -15280,7 +15283,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return frame_uv;
 			}
 			// both normal and optional tangents are stored in the same rotation map, this decodes that for each case
-			float3 decode_rotation_texture(float4 data, float3 key)
+			float3 decodeRotationTexture(float4 data, float3 key)
 			{
 				float3 x1 = data.w * key;
 				float3 x2 = cross(data.xyz, key);
@@ -15289,7 +15292,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return x4;
 			}
 
-			void applyVertexAnimationTexture_real(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
+			void applyVertexAnimationTexture(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
 			{
 				// setup for option skipping of first frame
 				float frame_count_modified = _VATFrameCount;
@@ -15329,8 +15332,8 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				}
 
 				// get the offset for curret and next frame
-				float2 current_frame_uv = get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-				float2 next_frame_uv = get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 current_frame_uv = getUVOffset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 next_frame_uv = getUVOffset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
 
 				// sample positiion texture with offset uv for current and next frame
 				float4 pos_offset = tex2Dlod(_VATPositionTexture, float4(current_frame_uv, 0, 0));
@@ -15341,12 +15344,12 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				float4 next_rotation_sample = tex2Dlod(_VATRotationTexture, float4(next_frame_uv, 0, 0));
 
 				// normal map from rotation texture
-				float3 normal_offset = decode_rotation_texture(rotation_sample, float3(0,1,0));
-				float3 next_normal_offset = decode_rotation_texture(next_rotation_sample, float3(0,1,0));
+				float3 normal_offset = decodeRotationTexture(rotation_sample, float3(0,1,0));
+				float3 next_normal_offset = decodeRotationTexture(next_rotation_sample, float3(0,1,0));
 
 				// tangnet map from rotation texture
-				float3 tangent_offset = decode_rotation_texture(rotation_sample, float3(-1,0,0));
-				float3 next_tangent_offset = decode_rotation_texture(next_rotation_sample, float3(-1,0,0));
+				float3 tangent_offset = decodeRotationTexture(rotation_sample, float3(-1,0,0));
+				float3 next_tangent_offset = decodeRotationTexture(next_rotation_sample, float3(-1,0,0));
 
 				// apply the offset to mesh
 
@@ -15392,11 +15395,11 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 					}
 				}
 			}
-			void applyVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
+			void testVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
 			{
 				if(_VATFromShader) // Only do VATs when checkbox is enabled, when using patched SPS this should be disabled
 				{
-					applyVertexAnimationTexture_real(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
+					applyVertexAnimationTexture(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
 				}
 			}
 			#endif
@@ -15624,7 +15627,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 
 				//ifex _EnabledVAT==0
 				#if defined(POI_VAT)
-				applyVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
+				testVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
 				#endif
 				//endex
 				
@@ -32574,7 +32577,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 			//ifex _EnabledVAT==0
 			#if defined(POI_VAT)
 			// helper function to get current frame and next frames offset
-			float2 get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+			float2 getUVOffset(float frame, float y_ratio, float y_cord, float x_cord)
 			{
 				// progress describes how far the animation is along the VAT, from 0 to 1
 				float progress = frame * (1/_VATFrameCount);
@@ -32585,7 +32588,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return frame_uv;
 			}
 			// both normal and optional tangents are stored in the same rotation map, this decodes that for each case
-			float3 decode_rotation_texture(float4 data, float3 key)
+			float3 decodeRotationTexture(float4 data, float3 key)
 			{
 				float3 x1 = data.w * key;
 				float3 x2 = cross(data.xyz, key);
@@ -32594,7 +32597,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return x4;
 			}
 
-			void applyVertexAnimationTexture_real(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
+			void applyVertexAnimationTexture(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
 			{
 				// setup for option skipping of first frame
 				float frame_count_modified = _VATFrameCount;
@@ -32634,8 +32637,8 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				}
 
 				// get the offset for curret and next frame
-				float2 current_frame_uv = get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-				float2 next_frame_uv = get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 current_frame_uv = getUVOffset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 next_frame_uv = getUVOffset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
 
 				// sample positiion texture with offset uv for current and next frame
 				float4 pos_offset = tex2Dlod(_VATPositionTexture, float4(current_frame_uv, 0, 0));
@@ -32646,12 +32649,12 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				float4 next_rotation_sample = tex2Dlod(_VATRotationTexture, float4(next_frame_uv, 0, 0));
 
 				// normal map from rotation texture
-				float3 normal_offset = decode_rotation_texture(rotation_sample, float3(0,1,0));
-				float3 next_normal_offset = decode_rotation_texture(next_rotation_sample, float3(0,1,0));
+				float3 normal_offset = decodeRotationTexture(rotation_sample, float3(0,1,0));
+				float3 next_normal_offset = decodeRotationTexture(next_rotation_sample, float3(0,1,0));
 
 				// tangnet map from rotation texture
-				float3 tangent_offset = decode_rotation_texture(rotation_sample, float3(-1,0,0));
-				float3 next_tangent_offset = decode_rotation_texture(next_rotation_sample, float3(-1,0,0));
+				float3 tangent_offset = decodeRotationTexture(rotation_sample, float3(-1,0,0));
+				float3 next_tangent_offset = decodeRotationTexture(next_rotation_sample, float3(-1,0,0));
 
 				// apply the offset to mesh
 
@@ -32697,11 +32700,11 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 					}
 				}
 			}
-			void applyVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
+			void testVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
 			{
 				if(_VATFromShader) // Only do VATs when checkbox is enabled, when using patched SPS this should be disabled
 				{
-					applyVertexAnimationTexture_real(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
+					applyVertexAnimationTexture(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
 				}
 			}
 			#endif
@@ -32929,7 +32932,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 
 				//ifex _EnabledVAT==0
 				#if defined(POI_VAT)
-				applyVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
+				testVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
 				#endif
 				//endex
 				
@@ -46069,7 +46072,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 			//ifex _EnabledVAT==0
 			#if defined(POI_VAT)
 			// helper function to get current frame and next frames offset
-			float2 get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+			float2 getUVOffset(float frame, float y_ratio, float y_cord, float x_cord)
 			{
 				// progress describes how far the animation is along the VAT, from 0 to 1
 				float progress = frame * (1/_VATFrameCount);
@@ -46080,7 +46083,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return frame_uv;
 			}
 			// both normal and optional tangents are stored in the same rotation map, this decodes that for each case
-			float3 decode_rotation_texture(float4 data, float3 key)
+			float3 decodeRotationTexture(float4 data, float3 key)
 			{
 				float3 x1 = data.w * key;
 				float3 x2 = cross(data.xyz, key);
@@ -46089,7 +46092,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return x4;
 			}
 
-			void applyVertexAnimationTexture_real(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
+			void applyVertexAnimationTexture(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
 			{
 				// setup for option skipping of first frame
 				float frame_count_modified = _VATFrameCount;
@@ -46129,8 +46132,8 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				}
 
 				// get the offset for curret and next frame
-				float2 current_frame_uv = get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-				float2 next_frame_uv = get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 current_frame_uv = getUVOffset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 next_frame_uv = getUVOffset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
 
 				// sample positiion texture with offset uv for current and next frame
 				float4 pos_offset = tex2Dlod(_VATPositionTexture, float4(current_frame_uv, 0, 0));
@@ -46141,12 +46144,12 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				float4 next_rotation_sample = tex2Dlod(_VATRotationTexture, float4(next_frame_uv, 0, 0));
 
 				// normal map from rotation texture
-				float3 normal_offset = decode_rotation_texture(rotation_sample, float3(0,1,0));
-				float3 next_normal_offset = decode_rotation_texture(next_rotation_sample, float3(0,1,0));
+				float3 normal_offset = decodeRotationTexture(rotation_sample, float3(0,1,0));
+				float3 next_normal_offset = decodeRotationTexture(next_rotation_sample, float3(0,1,0));
 
 				// tangnet map from rotation texture
-				float3 tangent_offset = decode_rotation_texture(rotation_sample, float3(-1,0,0));
-				float3 next_tangent_offset = decode_rotation_texture(next_rotation_sample, float3(-1,0,0));
+				float3 tangent_offset = decodeRotationTexture(rotation_sample, float3(-1,0,0));
+				float3 next_tangent_offset = decodeRotationTexture(next_rotation_sample, float3(-1,0,0));
 
 				// apply the offset to mesh
 
@@ -46192,11 +46195,11 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 					}
 				}
 			}
-			void applyVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
+			void testVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
 			{
 				if(_VATFromShader) // Only do VATs when checkbox is enabled, when using patched SPS this should be disabled
 				{
-					applyVertexAnimationTexture_real(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
+					applyVertexAnimationTexture(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
 				}
 			}
 			#endif
@@ -46424,7 +46427,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 
 				//ifex _EnabledVAT==0
 				#if defined(POI_VAT)
-				applyVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
+				testVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
 				#endif
 				//endex
 				
@@ -54758,7 +54761,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 			//ifex _EnabledVAT==0
 			#if defined(POI_VAT)
 			// helper function to get current frame and next frames offset
-			float2 get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+			float2 getUVOffset(float frame, float y_ratio, float y_cord, float x_cord)
 			{
 				// progress describes how far the animation is along the VAT, from 0 to 1
 				float progress = frame * (1/_VATFrameCount);
@@ -54769,7 +54772,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return frame_uv;
 			}
 			// both normal and optional tangents are stored in the same rotation map, this decodes that for each case
-			float3 decode_rotation_texture(float4 data, float3 key)
+			float3 decodeRotationTexture(float4 data, float3 key)
 			{
 				float3 x1 = data.w * key;
 				float3 x2 = cross(data.xyz, key);
@@ -54778,7 +54781,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				return x4;
 			}
 
-			void applyVertexAnimationTexture_real(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
+			void applyVertexAnimationTexture(inout float3 vertex, inout float3 normal, inout float3 tangent, in float2 uv, in float object_scale)
 			{
 				// setup for option skipping of first frame
 				float frame_count_modified = _VATFrameCount;
@@ -54818,8 +54821,8 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				}
 
 				// get the offset for curret and next frame
-				float2 current_frame_uv = get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-				float2 next_frame_uv = get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 current_frame_uv = getUVOffset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+				float2 next_frame_uv = getUVOffset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
 
 				// sample positiion texture with offset uv for current and next frame
 				float4 pos_offset = tex2Dlod(_VATPositionTexture, float4(current_frame_uv, 0, 0));
@@ -54830,12 +54833,12 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 				float4 next_rotation_sample = tex2Dlod(_VATRotationTexture, float4(next_frame_uv, 0, 0));
 
 				// normal map from rotation texture
-				float3 normal_offset = decode_rotation_texture(rotation_sample, float3(0,1,0));
-				float3 next_normal_offset = decode_rotation_texture(next_rotation_sample, float3(0,1,0));
+				float3 normal_offset = decodeRotationTexture(rotation_sample, float3(0,1,0));
+				float3 next_normal_offset = decodeRotationTexture(next_rotation_sample, float3(0,1,0));
 
 				// tangnet map from rotation texture
-				float3 tangent_offset = decode_rotation_texture(rotation_sample, float3(-1,0,0));
-				float3 next_tangent_offset = decode_rotation_texture(next_rotation_sample, float3(-1,0,0));
+				float3 tangent_offset = decodeRotationTexture(rotation_sample, float3(-1,0,0));
+				float3 next_tangent_offset = decodeRotationTexture(next_rotation_sample, float3(-1,0,0));
 
 				// apply the offset to mesh
 
@@ -54881,11 +54884,11 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 					}
 				}
 			}
-			void applyVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
+			void testVertexAnimationTexture(inout float4 vertex, inout float3 normal, inout float4 tangent, in float2 uv)
 			{
 				if(_VATFromShader) // Only do VATs when checkbox is enabled, when using patched SPS this should be disabled
 				{
-					applyVertexAnimationTexture_real(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
+					applyVertexAnimationTexture(vertex.xyz, normal, tangent.xyz, uv, _VATWorldScale);
 				}
 			}
 			#endif
@@ -55113,7 +55116,7 @@ Shader ".poiyomi/Poiyomi Toon VertexAnimationTexture"
 
 				//ifex _EnabledVAT==0
 				#if defined(POI_VAT)
-				applyVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
+				testVertexAnimationTexture(v.vertex, v.normal, v.tangent, v.uv1);
 				#endif
 				//endex
 				
